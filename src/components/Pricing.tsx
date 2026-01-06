@@ -3,66 +3,78 @@ import { Check, Zap, Crown, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-
-const plans = [
-  {
-    name: "Free",
-    price: "₹0",
-    description: "Dip your toes in",
-    features: [
-      "Limited analysis",
-      "Basic aura score",
-      "No history saved",
-    ],
-    cta: "Default",
-    popular: false,
-    icon: Star,
-  },
-  {
-    name: "Basic",
-    price: "₹50",
-    description: "Get a real taste",
-    features: [
-      "5 screenshot analyses",
-      "Better AI roast",
-      "Faster results",
-    ],
-    cta: "Get Basic",
-    popular: false,
-    icon: Zap,
-  },
-  {
-    name: "Best",
-    price: "₹100",
-    description: "Most popular choice",
-    features: [
-      "12 screenshot analyses",
-      "History of all results",
-      "Stronger roast + tips",
-    ],
-    cta: "Get Best",
-    popular: true,
-    icon: Crown,
-  },
-  {
-    name: "VIP",
-    price: "₹150",
-    description: "For the serious ones",
-    features: [
-      "25 screenshot analyses",
-      "Detailed roast + deep tips",
-      "All Best plan features",
-      "Priority processing",
-    ],
-    cta: "Go VIP",
-    popular: false,
-    icon: Crown,
-  },
-];
+import { useState, useEffect } from "react";
+import { getUserPricing, type PricingConfig } from "@/lib/geolocation";
 
 const Pricing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [pricing, setPricing] = useState<PricingConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getUserPricing()
+      .then(setPricing)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const plans = [
+    {
+      name: "Free",
+      price: "0",
+      description: "Dip your toes in",
+      features: [
+        "Limited analysis",
+        "Basic aura score",
+        "No history saved",
+      ],
+      cta: "Default",
+      popular: false,
+      icon: Star,
+    },
+    {
+      name: "Basic",
+      price: pricing?.prices.basic.toString() || "50",
+      description: "Get a real taste",
+      features: [
+        "5 screenshot analyses",
+        "Better AI roast",
+        "Faster results",
+      ],
+      cta: "Get Basic",
+      popular: false,
+      icon: Zap,
+    },
+    {
+      name: "Best",
+      price: pricing?.prices.best.toString() || "100",
+      description: "Most popular choice",
+      features: [
+        "12 screenshot analyses",
+        "History of all results",
+        "Stronger roast + tips",
+      ],
+      cta: "Get Best",
+      popular: true,
+      icon: Crown,
+    },
+    {
+      name: "VIP",
+      price: pricing?.prices.vip.toString() || "150",
+      description: "For the serious ones",
+      features: [
+        "25 screenshot analyses",
+        "Detailed roast + deep tips",
+        "All Best plan features",
+        "Priority processing",
+      ],
+      cta: "Go VIP",
+      popular: false,
+      icon: Crown,
+    },
+  ];
+
+  const currencySymbol = pricing?.symbol || "₹";
 
   const handlePlanClick = (planName: string) => {
     if (planName === "Free") return;
@@ -126,8 +138,10 @@ const Pricing = () => {
                   </div>
                   
                   <div className="mb-6">
-                    <span className="font-display text-4xl font-bold">{plan.price}</span>
-                    {plan.price !== "₹0" && (
+                    <span className="font-display text-4xl font-bold">
+                      {loading ? "..." : `${currencySymbol}${plan.price}`}
+                    </span>
+                    {plan.price !== "0" && (
                       <span className="text-muted-foreground text-sm ml-1">one-time</span>
                     )}
                   </div>

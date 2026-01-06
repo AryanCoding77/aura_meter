@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Check, Loader2, Sparkles, CheckCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { getUserPricing, type PricingConfig } from '@/lib/geolocation';
 
 interface CreditPack {
   id: 'starter' | 'popular' | 'pro';
@@ -17,51 +18,6 @@ interface CreditPack {
   popular?: boolean;
   savings?: string;
 }
-
-const creditPacks: CreditPack[] = [
-  {
-    id: 'starter',
-    name: 'Starter Pack',
-    price: 50,
-    credits: 5,
-    pricePerCredit: 10,
-    features: [
-      '5 screenshot analyses',
-      'AI-powered insights',
-      'Instant results',
-      'Share your results',
-    ],
-  },
-  {
-    id: 'popular',
-    name: 'Popular Pack',
-    price: 100,
-    credits: 12,
-    pricePerCredit: 8.33,
-    features: [
-      '12 screenshot analyses',
-      'Better value per credit',
-      'Full analysis history',
-      'Priority support',
-    ],
-    popular: true,
-    savings: 'Save 17%',
-  },
-  {
-    id: 'pro',
-    name: 'Pro Pack',
-    price: 150,
-    credits: 25,
-    pricePerCredit: 6,
-    features: [
-      '25 screenshot analyses',
-      'Best value per credit',
-      'Detailed insights',
-      'Priority processing',
-    ],
-    savings: 'Save 40%',
-  },
-];
 
 declare global {
   interface Window {
@@ -76,6 +32,8 @@ export default function BuyPlan() {
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [purchasedCredits, setPurchasedCredits] = useState(0);
+  const [pricing, setPricing] = useState<PricingConfig | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(true);
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -89,6 +47,60 @@ export default function BuyPlan() {
     };
   }, []);
 
+  useEffect(() => {
+    getUserPricing()
+      .then(setPricing)
+      .finally(() => setPricingLoading(false));
+  }, []);
+
+  const creditPacks: CreditPack[] = [
+    {
+      id: 'starter',
+      name: 'Starter Pack',
+      price: pricing?.prices.basic || 50,
+      credits: 5,
+      pricePerCredit: (pricing?.prices.basic || 50) / 5,
+      features: [
+        '5 screenshot analyses',
+        'AI-powered insights',
+        'Instant results',
+        'Share your results',
+      ],
+    },
+    {
+      id: 'popular',
+      name: 'Popular Pack',
+      price: pricing?.prices.best || 100,
+      credits: 12,
+      pricePerCredit: (pricing?.prices.best || 100) / 12,
+      features: [
+        '12 screenshot analyses',
+        'Better value per credit',
+        'Full analysis history',
+        'Priority support',
+      ],
+      popular: true,
+      savings: 'Save 17%',
+    },
+    {
+      id: 'pro',
+      name: 'Pro Pack',
+      price: pricing?.prices.vip || 150,
+      credits: 25,
+      pricePerCredit: (pricing?.prices.vip || 150) / 25,
+      features: [
+        '25 screenshot analyses',
+        'Best value per credit',
+        'Detailed insights',
+        'Priority processing',
+      ],
+      savings: 'Save 40%',
+    },
+  ];
+
+  const currencySymbol = pricing?.symbol || '₹';
+  const currency = pricing?.currency || 'INR';
+
   const handlePurchase = async (pack: CreditPack) => {
     if (!profile) {
       toast.error('Please login to continue');
@@ -98,6 +110,11 @@ export default function BuyPlan() {
 
     if (!scriptLoaded) {
       toast.error('Payment system loading. Please try again.');
+      return;
+    }
+
+    if (!pricing) {
+      toast.error('Loading pricing information. Please try again.');
       return;
     }
 
@@ -113,6 +130,13 @@ export default function BuyPlan() {
         return;
       }
 
+      // Calculate amount based on currency
+      // For INR: convert to paise (multiply by 100)
+      // For USD: Razorpay requires amount in smallest currency unit (cents)
+      const amountInSmallestUnit = pricing.isIndia 
+        ? pack.price * 100  // INR to paise
+        : pack.price * 100; // USD to cents
+
       // Create Razorpay order
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         'create-razorpay-order',
@@ -123,7 +147,8 @@ export default function BuyPlan() {
           body: {
             user_id: profile.id,
             plan_type: pack.id,
-            amount: pack.price * 100, // Convert to paise
+            amount: amountInSmallestUnit,
+            currency: pricing.currency,
           },
         }
       );
@@ -142,8 +167,8 @@ export default function BuyPlan() {
       // Initialize Razorpay
       const options = {
         key: key_id,
-        amount: pack.price * 100,
-        currency: 'INR',
+        amount: amountInSmallestUnit,
+        currency: pricing.currency,
         name: 'Aura Meter',
         description: `${pack.credits} Credits - ${pack.name}`,
         order_id: order_id,
@@ -427,9 +452,13 @@ export default function BuyPlan() {
                     {/* Price */}
                     <div className="mb-4">
                       <div className="flex items-baseline justify-center gap-2 mb-2">
-                        <span className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                          ₹{pack.price}
-                        </span>
+                        {pricingLoading ? (
+                          <span className="text-3xl font-bold text-[#9CA3AF]">Loading...</span>
+                        ) : (
+                          <span className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                            {currencySymbol}{pack.price}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-[#9CA3AF]">one-time payment</p>
                     </div>
@@ -441,7 +470,9 @@ export default function BuyPlan() {
                       <span className="text-sm text-[#9CA3AF]">credits</span>
                     </div>
                     
-                    <p className="text-xs text-[#9CA3AF] mt-2">₹{pack.pricePerCredit.toFixed(2)} per credit</p>
+                    <p className="text-xs text-[#9CA3AF] mt-2">
+                      {pricingLoading ? '...' : `${currencySymbol}${pack.pricePerCredit.toFixed(2)} per credit`}
+                    </p>
                   </div>
 
                   {/* Features */}
