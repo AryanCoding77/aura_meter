@@ -19,7 +19,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log('📦 Request body:', JSON.stringify(body, null, 2));
     
-    const { user_id, plan_type, amount } = body;
+    const { user_id, plan_type, amount, currency = 'INR' } = body;
 
     // Validate input
     console.log('🔍 Step 2: Validating input');
@@ -32,6 +32,12 @@ serve(async (req) => {
       throw new Error(`Invalid plan type: ${plan_type}`);
     }
     console.log('✅ Plan type validation passed');
+
+    // Validate currency
+    if (!['INR', 'USD'].includes(currency)) {
+      throw new Error(`Invalid currency: ${currency}`);
+    }
+    console.log(`✅ Currency validation passed: ${currency}`);
 
     // Check environment variables
     console.log('🔍 Step 3: Checking environment variables');
@@ -58,7 +64,7 @@ serve(async (req) => {
     
     const orderData = {
       amount: amount,
-      currency: 'INR',
+      currency: currency,
       receipt: receipt,
     };
     console.log('Order data:', JSON.stringify(orderData, null, 2));
