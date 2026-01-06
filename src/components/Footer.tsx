@@ -24,6 +24,7 @@ const Footer = () => {
 
           {/* Links */}
           <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link to="/feedback" className="hover:text-foreground transition-colors">Feedback</Link>
             <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
             <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
             <a href="mailto:support@aurameter.com" className="hover:text-foreground transition-colors">Contact</a>

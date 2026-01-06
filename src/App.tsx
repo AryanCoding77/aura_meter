@@ -18,6 +18,7 @@ import BuyPlan from "./pages/BuyPlan";
 import Settings from "./pages/Settings";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Feedback from "./pages/Feedback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/results" element={<Results />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/feedback" element={<Feedback />} />
             
             {/* Protected Routes */}
             <Route path="/dashboard" element={
